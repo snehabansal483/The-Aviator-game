@@ -49,10 +49,10 @@ Fly your plane, dodge obstacles, shoot bullets, and experience day-night transit
 ### 🚀 Plane Flying (Day Mode)
 ![Plane Flying](screenshot/gameplay1.png)
 
-### 🌚 Night Mode
+### 🌚 Morning Mode
 ![Night Mode](screenshot/morning_mode.png)
 
-### ☔ Rain Effect
+###  Restart Effect
 ![Rain Effect](screenshot/restart_mode.png)
 
 ### 🌳 Obstacles and Shooting
