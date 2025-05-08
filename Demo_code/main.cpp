@@ -10,6 +10,16 @@
 #pragma comment(lib, "winmm.lib")
 
 using namespace std;
+float bgColorR = 0.0f; // Red component
+float bgColorG = 0.5f; // Green component
+float bgColorB = 1.0f; // Blue component
+bool isDay = true;      // Track if it's day or night
+
+float treeX = 0.0;  // X position of the tree
+float treeY = 1.2;  // Start position (above the screen)
+float treeSpeed = 0.01; // Speed of falling tree
+bool treeVisible = true; // Show tree after restart
+
 // Game variables
 float planeX = -0.5f, planeY = 0.0f;    // Plane position
 vector<pair<float, float>> obstacles;  // Obstacle positions (x, gapY)
@@ -17,7 +27,6 @@ int score = 0;
 
 // Rain state flag
 bool isRainy = false;
-
 bool gameOver = false;                 // Game state
 bool gameStarted = false;              // To start/restart the game
 bool isMorning = true;                 // Flag for day/night mode
@@ -58,20 +67,22 @@ void stopSound() {
 }
 
 // Function to draw Sun or Moon
-void drawSunOrMoon(bool isMorning, float time) {
-    float centerX = 0.0f, centerY = 0.8f, radius = 0.5f; // Circular path
-    float x = centerX + radius * cos(2 * M_PI * time); // X position
-    float y = centerY + radius * sin(2 * M_PI * time); // Y position
+void drawSunOrMoon(bool isMorning, float animationTime) {
+    if (isMorning) {
+        glColor3f(1.0, 1.0, 0.0); // Yellow Sun
+    } else {
+        glColor3f(0.8, 0.8, 0.9); // Light Grey Moon
+    }
 
-    glColor3f(isMorning ? 1.0f : 0.8f, isMorning ? 1.0f : 0.8f, isMorning ? 0.0f : 0.9f);
-    glBegin(GL_POLYGON);
-    for (int i = 0; i < 360; i++) {
-        float angle = i * M_PI / 180.0f;
-        glVertex2f(x + 0.05f * cos(angle), y + 0.05f * sin(angle));
+    // Draw Circle (Sun or Moon)
+    float x = -0.7f, y = 0.8f, radius = 0.1f;
+    glBegin(GL_TRIANGLE_FAN);
+    for (int i = 0; i <= 360; i += 10) {
+        float angle = i * 3.14159 / 180;
+        glVertex2f(x + cos(angle) * radius, y + sin(angle) * radius);
     }
     glEnd();
 }
-
 void drawRain() {
     if (!isRainy) return; // Do not render rain if it's off
 
@@ -88,17 +99,48 @@ void drawRain() {
     }
 }
 //draw cloud
-void drawClouds() {
+void drawRealisticCloud(float x, float y, float scale) {
     glColor3f(1.0, 1.0, 1.0); // White clouds
-    for (float i = -1.0; i < 1.0; i += 0.3f) {
-        float x = i + animationTime * 0.05;  // Move clouds
-        float y = 0.8f;
-        glBegin(GL_POLYGON);
-        for (int j = 0; j < 360; j++) {
-            float angle = j * M_PI / 180.0f;
-            glVertex2f(x + 0.2f * cos(angle), y + 0.1f * sin(angle));
-        }
-        glEnd();
+
+    // Main large cloud body
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i++) {
+        float angle = i * M_PI / 180.0f;
+        glVertex2f(x + scale * 0.15f * cos(angle), y + scale * 0.08f * sin(angle));
+    }
+    glEnd();
+
+    // Overlapping fluffy parts
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i++) {
+        float angle = i * M_PI / 180.0f;
+        glVertex2f(x - scale * 0.1f + scale * 0.1f * cos(angle), y + scale * 0.06f * sin(angle));
+    }
+    glEnd();
+
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i++) {
+        float angle = i * M_PI / 180.0f;
+        glVertex2f(x + scale * 0.1f + scale * 0.09f * cos(angle), y + scale * 0.07f * sin(angle));
+    }
+    glEnd();
+
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i++) {
+        float angle = i * M_PI / 180.0f;
+        glVertex2f(x + scale * 0.03f + scale * 0.07f * cos(angle), y - scale * 0.02f * sin(angle));
+    }
+    glEnd();
+}
+
+void drawClouds() {
+    float cloudPositions[][3] = {
+        {-0.8f, 0.7f, 1.0f}, {-0.5f, 0.6f, 0.8f}, {-0.2f, 0.75f, 1.2f},
+        {0.2f, 0.65f, 1.0f}, {0.6f, 0.72f, 0.9f}, {0.9f, 0.68f, 1.1f}
+    };
+
+    for (int i = 0; i < 6; i++) {
+        drawRealisticCloud(cloudPositions[i][0], cloudPositions[i][1], cloudPositions[i][2]);
     }
 }
 
@@ -115,6 +157,73 @@ bool isOverlapping(float xPos) {
         }
     }
     return false;
+}
+void drawTree(float x, float y) {
+    glPushMatrix();
+    glTranslatef(x, y, 0.0);
+
+    // Trunk (Brown)
+    glColor3f(0.5, 0.25, 0.0);
+    glBegin(GL_POLYGON);
+    glVertex2f(-0.02, -0.1);
+    glVertex2f(0.02, -0.1);
+    glVertex2f(0.02, 0.1);
+    glVertex2f(-0.02, 0.1);
+    glEnd();
+
+    // Leaves (Green)
+    glColor3f(0.0, 0.8, 0.0);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-0.1, 0.1);
+    glVertex2f(0.1, 0.1);
+    glVertex2f(0.0, 0.3);
+    glEnd();
+
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-0.08, 0.2);
+    glVertex2f(0.08, 0.2);
+    glVertex2f(0.0, 0.4);
+    glEnd();
+
+    glPopMatrix();
+}
+void updateTree() {
+    if (treeVisible) {
+        treeY -= treeSpeed; // Move tree down
+
+        // **Check for collision with the plane**
+        float treeLeft = treeX - 0.1;
+        float treeRight = treeX + 0.1;
+        float treeBottom = treeY - 0.2;
+        float treeTop = treeY + 0.4;
+
+        float planeLeft = planeX - 0.05;
+        float planeRight = planeX + 0.05;
+        float planeBottom = planeY - 0.05;
+        float planeTop = planeY + 0.05;
+
+        if (planeRight > treeLeft && planeLeft < treeRight &&
+            planeTop > treeBottom && planeBottom < treeTop) {
+            gameOver = true; // **Game Over if collision happens**
+        }
+
+        // **Reset tree if it moves off-screen**
+        if (treeY < -1.2) {
+            treeY = 1.2;
+            treeX = (rand() % 200 - 100) / 100.0; // Random X position
+        }
+    }
+}
+void restartGame() {
+    score = 0;
+    gameOver = false;
+    planeX = 0.0;
+    planeY = -0.5;
+
+    // **Reset tree position**
+    treeX = (rand() % 200 - 100) / 100.0;
+    treeY = 1.2;
+    treeVisible = true;
 }
 
 // Initialize obstacles with no overlap
@@ -144,16 +253,58 @@ void init() {
     gameStarted = true;
     playSound("C:\\Users\\Sneha Bansal\\Downloads\\Demo_code\\background.mp3", true);
 }
-
-
 // Draw the plane
 void drawPlane() {
-    glColor3f(1.0, 1.0, 0.0); // Yellow plane
+    glPushMatrix();
+    glTranslatef(planeX, planeY, 0); // Move plane to its position
+    glScalef(0.2, 0.2, 1); // Scale the plane
+
+    // Body of the airplane
+    glColor3f(1.0, 1.0, 0.0); // Yellow body
     glBegin(GL_POLYGON);
-    glVertex2f(planeX - 0.05, planeY + 0.05);
-    glVertex2f(planeX - 0.05, planeY - 0.05);
-    glVertex2f(planeX + 0.05, planeY);
+    glVertex2f(-0.3, 0.05);
+    glVertex2f(0.3, 0.05);
+    glVertex2f(0.35, 0.02);
+    glVertex2f(0.35, -0.02);
+    glVertex2f(0.3, -0.05);
+    glVertex2f(-0.3, -0.05);
     glEnd();
+
+    // Cockpit (Front glass area)
+    glColor3f(0.0, 0.0, 1.0); // Blue cockpit
+    glBegin(GL_POLYGON);
+    glVertex2f(0.2, 0.05);
+    glVertex2f(0.28, 0.05);
+    glVertex2f(0.3, 0.02);
+    glVertex2f(0.2, 0.02);
+    glEnd();
+
+    // Wings
+    glColor3f(1.0, 0.0, 0.0); // Red wings
+    glBegin(GL_POLYGON);
+    glVertex2f(-0.1, 0.05);
+    glVertex2f(-0.3, 0.15);
+    glVertex2f(-0.2, 0.15);
+    glVertex2f(0.0, 0.05);
+    glEnd();
+
+    glBegin(GL_POLYGON);
+    glVertex2f(-0.1, -0.05);
+    glVertex2f(-0.3, -0.15);
+    glVertex2f(-0.2, -0.15);
+    glVertex2f(0.0, -0.05);
+    glEnd();
+
+    // Tail
+    glColor3f(1.0, 0.0, 0.0); // Red tail
+    glBegin(GL_POLYGON);
+    glVertex2f(-0.3, 0.05);
+    glVertex2f(-0.35, 0.1);
+    glVertex2f(-0.3, 0.1);
+    glVertex2f(-0.2, 0.05);
+    glEnd();
+
+    glPopMatrix();
 }
 
 // Draw the obstacles
@@ -238,12 +389,42 @@ void drawStars() {
         }
     }
 }
+void updateLighting() {
+    if (isMorning) {
+        // Morning to Night transition
+        bgColorR -= 0.001f;  // Reduce red
+        bgColorG -= 0.001f;  // Reduce green
+        bgColorB += 0.002f;  // Increase blue (toward dark blue)
+
+        if (bgColorR <= 0.1f && bgColorG <= 0.1f && bgColorB >= 0.2f) {
+            isMorning = false;  // Switch to night mode
+        }
+    } else {
+        // Night to Morning transition
+        bgColorR += 0.001f;
+        bgColorG += 0.001f;
+        bgColorB -= 0.002f;  // Reduce blue (toward bright sky)
+
+        if (bgColorR >= 0.5f && bgColorG >= 0.7f && bgColorB <= 0.9f) {
+            isMorning = true;  // Switch to morning mode
+        }
+    }
+
+    glutPostRedisplay();  // Redraw the scene
+}
+
+void timer(int value) {
+    updateLighting(); // **Update background lighting over time**
+    glutTimerFunc(100, timer, 0); // Call this function every 100ms
+}
+
 
 
 
 
 // Display callback
 void display() {
+    glClearColor(bgColorR, bgColorG, bgColorB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (inMenu) {
@@ -297,7 +478,7 @@ void display() {
         glEnd();
 
         glRasterPos2f(-0.3, -0.8);
-        string menuText = "Press 'Enter' to Start the Game!";
+        string menuText = "Press 'M OR N' to Start the Game!";
         for (char c : menuText) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
 
     } else {
@@ -313,6 +494,8 @@ void display() {
             drawBullets();
             checkCollision();
             drawRain();
+            drawTree(treeX, treeY);
+            updateTree();
 
             // Display score
             glColor3f(1.0, 0.1, 0.1);
@@ -330,7 +513,6 @@ void display() {
             sprintf(timeText, "Time: %.2f", timeRemaining);
             renderText(0.7, 0.9, timeText);
         }
-
         if (gameOver) {
             char scoreText[50];
             sprintf(scoreText, "Game Over! Press 'R' to Restart. Score: %d", score);
@@ -340,6 +522,24 @@ void display() {
 
     glutSwapBuffers();
 }
+void updateBullets() {
+    for (auto& bullet : bullets) {
+        if (bullet.active) {
+            bullet.x += 0.02f; // Move bullet to the right
+
+            // Deactivate bullet if it moves out of the screen
+            if (bullet.x > 1.0f) {
+                bullet.active = false;
+            }
+        }
+    }
+
+    // Remove inactive bullets from the vector
+    bullets.erase(remove_if(bullets.begin(), bullets.end(),
+        [](Bullet& b) { return !b.active; }),
+        bullets.end());
+}
+
 
 
 // Update game state
@@ -399,7 +599,6 @@ bullets.erase(remove_if(bullets.begin(), bullets.end(),
     glutTimerFunc(16, update, 0);
 }
 
-// Handle keyboard input
 void keyboard(unsigned char key, int x, int y) {
     if (inMenu) {
         if (key == 'm' || key == 'M') {
@@ -411,32 +610,32 @@ void keyboard(unsigned char key, int x, int y) {
             inMenu = false;
             init();
         }
-    }else if (!gameOver) {
+    } else if (!gameOver) {
         if (key == 's' || key == 'S') {
-            // When the game is over, pressing 'm' or 'M' returns to the menu
             inMenu = true;
             init();  // Reset game and show the menu
         }
-    }  else {
-        if (key == 'r' || key == 'R') {
-            init();
-        } else if (key == ' ' && !gameOver && bulletsRemaining > 0) {
-            bullets.push_back({planeX + 0.05, planeY});
+        else if (key == ' ' && bulletsRemaining > 0) {  // Fire bullet
+            bullets.push_back({planeX + 0.05, planeY, true}); // Add bullet with 'active' flag
             bulletsRemaining--;
-             // Play MP3 file
-    mciSendString("close mp3", NULL, 0, NULL); // Close any previously opened MP3
-   mciSendString("open \"C:\\Users\\Sneha Bansal\\Downloads\\Demo_code\\bullet.mp3\" type mpegvideo alias mp3", NULL, 0, NULL);
-    mciSendString("play mp3", NULL, 0, NULL);
+
+            // Play bullet sound
+            mciSendString("close bullet_sound", NULL, 0, NULL);
+            mciSendString("open \"C:\\Users\\Sneha Bansal\\Downloads\\Demo_code\\bullet.mp3\" type mpegvideo alias bullet_sound", NULL, 0, NULL);
+            mciSendString("play bullet_sound", NULL, 0, NULL);
         }
-        else if (key == 't' || key == 'T') {
-            isRainy = !isRainy;  // Toggle rain state (T for Toggle)
-            if (isRainy) {
-                cout << "Rain started!" << endl;
-            } else {
-                cout << "Rain stopped!" << endl;
-            }
+        else if (key == 't' || key == 'T') {  // Toggle rain
+            isRainy = !isRainy;
+            cout << (isRainy ? "Rain started!" : "Rain stopped!") << endl;
+        }
+    } else {  // Game Over condition
+        if (key == 'r' || key == 'R') {
+            restartGame();
+            init();
         }
     }
+
+    glutPostRedisplay(); // Refresh screen after key press
 }
 
 // Handle special keys (for plane movement)
@@ -469,6 +668,9 @@ int main(int argc, char** argv) {
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(specialKeys);
     glutReshapeFunc(reshape);
+    glutTimerFunc(100, timer, 0);
     glutMainLoop();
     return 0;
 }
+
+
