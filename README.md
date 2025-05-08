@@ -44,7 +44,20 @@ Fly your plane, dodge obstacles, shoot bullets, and experience day-night transit
     ```
 
 ## 📸 Screenshots
-> *Add screenshots here if you have them (gameplay showing plane, obstacles, rain, and day-night cycle).*
+
+
+### 🚀 Plane Flying (Day Mode)
+![Plane Flying](screenshots/gameplay1.png)
+
+### 🌚 Night Mode
+![Night Mode](screenshots/night_mode.png)
+
+### ☔ Rain Effect
+![Rain Effect](screenshots/rain_effect.png)
+
+### 🌳 Obstacles and Shooting
+![Obstacles](screenshots/gameplay2.png)
+
 
 ## 📚 Learnings
 - Real-time game loop creation in C++
